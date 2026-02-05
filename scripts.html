@@ -1,0 +1,436 @@
+<!-- MOD-001: ENCABEZADO [INICIO] -->
+<!--
+*****************************************
+PROYECTO: CodeWorkShop
+ARCHIVO: scripts.html
+VERSIÓN: 01.26
+FECHA: 05/02/2026 09:45 (UTC-5)
+*****************************************
+-->
+<!-- MOD-001: FIN -->
+
+<!-- MOD-002: SCRIPT PRINCIPAL [INICIO] -->
+<script>
+
+// MOD-002-S01: VARIABLES GLOBALES [INICIO]
+let codigoOriginal = '';
+let modulosDetectados = [];
+let moduloSeleccionado = null;
+let modoEdicion = null; // 'modXmod' o 'multiMod'
+// MOD-002-S01: FIN
+
+
+  // MOD-002-S02: UTILIDADES GENERALES [INICIO]
+
+  // UTILIDAD: ESCAPAR HTML (SOLO UI GENERAL)
+  // ⚠️ NO USAR PARA MODS
+  function escaparHTML(texto) {
+    return texto
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+  // MOD-002-S02: FIN
+
+
+// MOD-002-S03: ANALISIS DE MODULOS V2 [INICIO]
+
+function analizarModulos(modo) {
+  const codigo = document.getElementById('codigoOriginal').value;
+
+  if (!codigo.trim()) {
+    mostrarNotificacion('⚠️ Carga un código primero', 'warning');
+    return;
+  }
+
+  // Guardar el modo de edición seleccionado
+  modoEdicion = modo;
+
+  mostrarCargando(true);
+
+  google.script.run
+    .withSuccessHandler(res => {
+      mostrarCargando(false);
+
+      if (!res.success) {
+        mostrarNotificacion(res.error, 'error');
+        return;
+      }
+
+      codigoOriginal = codigo;
+      modulosDetectados = res.modulos;
+
+      mostrarModulos(modulosDetectados);
+      configurarModoEdicion(modo);
+      
+      // 🆕 MOSTRAR ESTADÍSTICAS
+      if (res.estadisticas) {
+        const stats = res.estadisticas;
+        const mensaje = `✅ Detectados: ${stats.total} MOD = ${stats.padres} MOD + ${stats.hijos} SubMOD`;
+        mostrarNotificacion(mensaje, 'success');
+      } else {
+        // Fallback si no hay estadísticas
+        mostrarNotificacion(`✅ ${res.modulos.length} MODs detectados`, 'success');
+      }
+    })
+    .withFailureHandler(() => {
+      mostrarCargando(false);
+      mostrarNotificacion('❌ Error al analizar', 'error');
+    })
+    .parsearModulos(codigo);
+}
+
+// MOD-002-S03: FIN
+
+// MOD-002-S04: UI – LISTADO Y SELECCION DE MODS V3 [INICIO]
+function mostrarModulos(modulos) {
+  const lista = document.getElementById('listaModulos');
+  lista.innerHTML = '';
+
+  modulos.forEach((mod, index) => {
+    const item = document.createElement('div');
+    item.className = 'modulo-item';
+    item.onclick = () => seleccionarModulo(index);
+    
+    // 🆕 MOSTRAR LÍNEAS AL LADO DE LA DESCRIPCIÓN
+    const textoLineas = mod.lineas ? ` (${mod.lineas} líneas)` : '';
+    item.textContent = `${mod.id} ${mod.descripcion}${textoLineas}`;
+    
+    lista.appendChild(item);
+  });
+
+  document.getElementById('seccionModulos').style.display = 'block';
+  
+  // Asegurar que la lista esté expandida al cargar
+  const listaElement = document.getElementById('listaModulos');
+  const btnCollapse = document.getElementById('btnCollapseModulos');
+  listaElement.classList.remove('collapsed');
+  btnCollapse.textContent = '▼';
+}
+
+function seleccionarModulo(index) {
+  moduloSeleccionado = modulosDetectados[index];
+  
+  document.querySelectorAll('.modulo-item').forEach((el, i) => {
+    el.classList.toggle('selected', i === index);
+  });
+  
+  const campoActual = document.getElementById('moduloActual');
+  campoActual.value = moduloSeleccionado.codigo;
+  campoActual.readOnly = true;
+
+  document.getElementById('seccionModuloActual').style.display = 'block';
+  document.getElementById('seccionNuevoModulo').style.display = 'block';
+
+  mostrarNotificacion(`ℹ️ ${moduloSeleccionado.id} seleccionado`, 'info');
+}
+
+function toggleModulos() {
+  const lista = document.getElementById('listaModulos');
+  const btnCollapse = document.getElementById('btnCollapseModulos');
+  
+  lista.classList.toggle('collapsed');
+  
+  if (lista.classList.contains('collapsed')) {
+    btnCollapse.textContent = '▶';
+  } else {
+    btnCollapse.textContent = '▼';
+  }
+}
+
+function configurarModoEdicion(modo) {
+  const areaModXMod = document.getElementById('areaModXMod');
+  const areaMultiMod = document.getElementById('areaMultiMod');
+  
+  if (modo === 'modXmod') {
+    // SOLO MOD x MOD requiere selección previa
+    areaModXMod.style.display = 'block';
+    areaMultiMod.style.display = 'none';
+  } else {
+    // Multi MOD y Agregar MOD: textarea 4 directo
+    areaModXMod.style.display = 'none';
+    areaMultiMod.style.display = 'block';
+    document.getElementById('seccionNuevoModulo').style.display = 'block';
+  }
+}
+// MOD-002-S04: FIN
+
+// MOD-002-S05: REEMPLAZO DE MODULOS [INICIO]
+function aplicarCambio() {
+  if (!codigoOriginal) {
+    mostrarNotificacion('⚠️ Falta código original', 'warning');
+    return;
+  }
+
+  // Detectar el modo y ejecutar la función correspondiente
+  if (modoEdicion === 'multiMod') {
+    aplicarCambioMultiple();
+  } 
+  else if (modoEdicion === 'nuevoMod') {
+    aplicarCambioNuevo(); // 🆕 HÍBRIDO: reemplaza O agrega
+  }
+  else {
+    aplicarCambioIndividual();
+  }
+}
+
+function aplicarCambioIndividual() {
+  if (!moduloSeleccionado) {
+    mostrarNotificacion('⚠️ Selecciona un módulo primero', 'warning');
+    return;
+  }
+
+  const nuevoModulo = document.getElementById('nuevoModulo').value;
+  
+  if (!nuevoModulo.trim()) {
+    mostrarNotificacion('⚠️ Pega el nuevo código del módulo', 'warning');
+    return;
+  }
+
+  mostrarCargando(true);
+
+  google.script.run
+    .withSuccessHandler(res => {
+      mostrarCargando(false);
+
+      if (!res.success) {
+        mostrarNotificacion(res.error, 'error');
+        return;
+      }
+
+      document.getElementById('codigoResultante').value = res.codigo;
+      document.getElementById('seccionResultado').style.display = 'block';
+
+      mostrarNotificacion('✅ Módulo reemplazado', 'success');
+    })
+    .withFailureHandler(() => {
+      mostrarCargando(false);
+      mostrarNotificacion('❌ Error al aplicar cambio', 'error');
+    })
+    .reemplazarModulo(
+      codigoOriginal,
+      moduloSeleccionado.id,
+      nuevoModulo
+    );
+}
+
+function aplicarCambioMultiple() {
+  const multiModulo = document.getElementById('multiModulo').value;
+  
+  if (!multiModulo.trim()) {
+    mostrarNotificacion('⚠️ Pega los módulos a reemplazar', 'warning');
+    return;
+  }
+
+  mostrarCargando(true);
+
+  google.script.run
+    .withSuccessHandler(res => {
+      mostrarCargando(false);
+
+      if (!res.success) {
+        mostrarNotificacion(res.error, 'error');
+        return;
+      }
+
+      document.getElementById('codigoResultante').value = res.codigo;
+      document.getElementById('seccionResultado').style.display = 'block';
+
+      mostrarNotificacion(`✅ ${res.modulosReemplazados} módulos reemplazados`, 'success');
+    })
+    .withFailureHandler(() => {
+      mostrarCargando(false);
+      mostrarNotificacion('❌ Error al aplicar cambios múltiples', 'error');
+    })
+    .reemplazarMultiplesModulos(
+      codigoOriginal,
+      multiModulo
+    );
+}
+// MOD-002-S05: FIN
+
+
+// MOD-002-S06: UTILIDADES UI V2 [INICIO]
+function copiarResultado() {
+  navigator.clipboard.writeText(
+    document.getElementById('codigoResultante').value
+  );
+  mostrarNotificacion('✅ Código copiado al portapapeles', 'success');
+}
+
+function reiniciar() {
+  codigoOriginal = '';
+  modulosDetectados = [];
+  moduloSeleccionado = null;
+}
+
+function mostrarNotificacion(msg, tipo = 'success') {
+  const toast = document.getElementById('toast');
+  toast.className = `toast ${tipo} show`;
+  toast.textContent = msg;
+  setTimeout(() => toast.className = 'toast', 3000);
+}
+
+function mostrarCargando(show) {
+  document
+    .getElementById('loading')
+    .classList.toggle('show', show);
+}
+// MOD-002-S06: FIN
+
+
+// MOD-002-S07: ACCIONES DE HEADER [INICIO]
+  function copiarUrlPdfEstandar() {
+    const urlPdf =
+      'https://docs.google.com/document/d/1vbbaAPpTN9nQed_OOtoQBIp9K3PfNn5wgXWhNELAhqA/export?format=pdf';
+
+    navigator.clipboard.writeText(urlPdf);
+    mostrarNotificacion('✅ URL del estándar copiada', 'success');
+  }
+
+  function copiarInstruccionesIA() {
+    google.script.run
+      .withSuccessHandler(res => {
+        if (!res || !res.success) {
+          mostrarNotificacion(
+            res?.error || '❌ Error al obtener estándar',
+            'error'
+          );
+          return;
+        }
+
+        navigator.clipboard.writeText(res.texto);
+        mostrarNotificacion(
+          '✅ Estándar copiado al portapapeles',
+          'success'
+        );
+      })
+      .withFailureHandler(() => {
+        mostrarNotificacion(
+          '❌ Error al leer el estándar',
+          'error'
+        );
+      })
+      .obtenerEstandar();
+  }
+  // MOD-002-S07: FIN
+
+
+  // MOD-002-S08: LOG Y ARRANQUE [INICIO]
+  console.log('✅ Scripts CodeWorkShop v2.7 cargados');
+  // MOD-002-S08: FIN
+
+// MOD-002-S09: AGREGAR MOD HÍBRIDO V2 [INICIO]
+function aplicarCambioNuevo() {
+  const nuevoModulo = document.getElementById('multiModulo').value;  // ✅ Siempre multiModulo
+  
+  if (!nuevoModulo.trim()) {
+    mostrarNotificacion('⚠️ Pega los módulos en el área inferior', 'warning');
+    return;
+  }
+
+  mostrarCargando(true);
+
+  google.script.run
+    .withSuccessHandler(res => {
+      mostrarCargando(false);
+      if (!res.success) {
+        mostrarNotificacion(res.error, 'error');
+        return;
+      }
+      document.getElementById('codigoResultante').value = res.codigo;
+      document.getElementById('seccionResultado').style.display = 'block';
+      
+      if (res.accionRealizada === 'reemplazado') {
+        mostrarNotificacion('✅ Módulo(s) reemplazado(s)', 'success');
+      } else {
+        mostrarNotificacion(`✅ ${res.modulosProcesados} módulo(s) procesado(s)`, 'success');
+      }
+    })
+    .withFailureHandler(err => {
+      mostrarCargando(false);
+      mostrarNotificacion('❌ Error del servidor: ' + err, 'error');
+    })
+    .agregarModuloNuevo(codigoOriginal, nuevoModulo);
+}
+// MOD-002-S09: FIN
+
+// MOD-002-S10: REENUMERAR CÓDIGO [INICIO]
+/**
+ * Reenumera todos los módulos del código cargado.
+ * Detecta el primer intermedio y reenumera desde ahí.
+ */
+function reenumerarCodigo() {
+  const codigo = document.getElementById('codigoOriginal').value;
+
+  if (!codigo.trim()) {
+    mostrarNotificacion('⚠️ Carga un código primero', 'warning');
+    return;
+  }
+
+  mostrarCargando(true);
+
+  google.script.run
+    .withSuccessHandler(res => {
+      mostrarCargando(false);
+
+      if (!res.success) {
+        mostrarNotificacion(res.error || '❌ Error al reenumerar', 'error');
+        return;
+      }
+
+      // Si no había cambios necesarios
+      if (res.mensaje) {
+        mostrarNotificacion(res.mensaje, 'info');
+        return;
+      }
+
+      // Mostrar código reenumerado en sección de resultado
+      document.getElementById('codigoResultante').value = res.codigo;
+      document.getElementById('seccionResultado').style.display = 'block';
+
+      // Mostrar estadísticas si están disponibles
+      if (res.estadisticas) {
+        const stats = res.estadisticas;
+        const totalCambios = stats.etapa1.modulosProcesados + stats.etapa2.modulosProcesados;
+        const mensaje = `✅ Reenumeración: ${totalCambios} cambio(s). Etapa 1: ${stats.etapa1.modulosProcesados}, Etapa 2: ${stats.etapa2.modulosProcesados}`;
+        mostrarNotificacion(mensaje, 'success');
+      } else {
+        mostrarNotificacion('✅ Reenumeración completada exitosamente', 'success');
+      })
+    .withFailureHandler(err => {
+      mostrarCargando(false);
+      mostrarNotificacion('❌ Error al reenumerar: ' + err, 'error');
+    })
+    .reenumerarModulosCompleto(codigo);
+}
+// MOD-002-S10: FIN
+
+</script>
+<!-- MOD-002: FIN -->
+
+<!-- MOD-099: NOTAS [INICIO] -->
+<!--
+DESCRIPCIÓN:
+Frontend de CodeWorkShop. Captura código, envía al backend y muestra resultados.
+
+RESPONSABILIDAD:
+- Captura código del usuario
+- Envía a code.gs para procesamiento
+- Muestra resultados y estadísticas
+- Gestiona UI de modo MOD x MOD y Multi MOD
+
+ACTUALIZACIÓN V01.19:
+- MOD-002-S03: Muestra estadísticas (total MOD, padres, hijos)
+- MOD-002-S04 V2: Muestra conteo de líneas por módulo
+
+INTEGRACIÓN:
+Backend code.gs v01.29:
+- MOD-006 v7.0: Detección ultra agnóstica + conteo de líneas
+- MOD-008 v4.0: Validación dinámica
+- MOD-009 v6.0: Reemplazo ultra agnóstico
+
+ESTADO:
+Compatible con backend ultra agnóstico v01.29
+-->
+<!-- MOD-099: FIN -->
