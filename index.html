@@ -1,0 +1,189 @@
+<!-- MOD-001: ENCABEZADO [INICIO] -->
+<!--
+******************************************
+PROYECTO: CodeWorkShop
+ARCHIVO: index.html
+VERSIÓN: 01.13
+FECHA: 04/02/2026 22:23 (UTC-5)
+******************************************
+-->
+<!-- MOD-001: FIN -->
+
+<!-- MOD-002: APERTURA HTML [INICIO] -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CodeWorkShop</title>
+  <?!= include('style'); ?>
+</head>
+<body>
+<!-- MOD-002: FIN -->
+
+<!-- MOD-003: CONTAINER PRINCIPAL [INICIO] -->
+<div class="container">
+<!-- MOD-003: FIN -->
+
+<!-- MOD-004: HEADER [INICIO] -->
+<div class="main-header">
+  <div class="header-content">
+    <h1>🔧 CodeWorkShop</h1>
+    <p class="subtitle">Modificación modular y quirúrgica de código</p>
+  </div>
+  <div class="header-actions">
+    <button class="btn-secondary" onclick="copiarUrlPdfEstandar()"
+            title="Copia la URL del PDF del estándar">
+      🔗 Copiar URL
+    </button>
+    <button class="btn-secondary" onclick="copiarInstruccionesIA()"
+            title="Copia el estándar CodeWorkShop para entrenar IAs">
+      📋 Copiar Estándar
+    </button>
+    <button class="btn-secondary" onclick="reenumerarCodigo()"
+            title="Reenumera los módulos desde el primer intermedio detectado">
+      🔢 Reenumerar
+    </button>
+  </div>
+</div>
+<!-- MOD-004: FIN -->
+
+<!-- MOD-005: SECCIÓN CARGA DE CÓDIGO [INICIO] -->
+<div class="section">
+  <h2>1. Cargar Código Original</h2>
+  <textarea id="codigoOriginal"
+            class="code-area"
+            placeholder="Pega aquí tu código con módulos MOD-XXX..."></textarea>
+  <div class="button-group">
+    <button class="btn-primary" onclick="analizarModulos('modXmod')">
+      🔍 MOD x MOD
+    </button>
+    <button class="btn-primary" onclick="analizarModulos('multiMod')">
+      📦 Multi MOD
+    </button>
+    <button class="btn-primary" onclick="analizarModulos('nuevoMod')">
+      ➕ Agregar MOD
+    </button>
+  </div>
+</div>
+<!-- MOD-005: FIN -->
+
+<!-- MOD-006: SECCIÓN LISTA DE MÓDULOS [INICIO] -->
+<div class="section" id="seccionModulos" style="display:none;">
+  <div class="section-header">
+    <h2>2. Seleccionar Módulo a Modificar</h2>
+    <button class="btn-collapse" id="btnCollapseModulos" onclick="toggleModulos()">
+      ▼
+    </button>
+  </div>
+  <div id="listaModulos" class="modulo-list"></div>
+</div>
+<!-- MOD-006: FIN -->
+
+<!-- MOD-007: SECCIÓN CÓDIGO ACTUAL [INICIO] -->
+<div class="section" id="seccionModuloActual" style="display:none;">
+  <h2>3. Código Actual del Módulo</h2>
+  <textarea id="moduloActual"
+            class="code-area"
+            readonly></textarea>
+</div>
+<!-- MOD-007: FIN -->
+
+<!-- MOD-008: SECCIÓN NUEVO CÓDIGO [INICIO] -->
+<div class="section" id="seccionNuevoModulo" style="display:none;">
+  <h2>4. Nuevo Código del Módulo</h2>
+  
+  <!-- Textarea para MOD x MOD (modo individual) -->
+  <div id="areaModXMod">
+    <textarea id="nuevoModulo"
+              class="code-area"
+              placeholder="Pega aquí el nuevo código del módulo MOD-XXX..."></textarea>
+  </div>
+  
+  <!-- Textarea para Multi MOD (modo múltiple) -->
+  <div id="areaMultiMod" style="display:none;">
+    <textarea id="multiModulo"
+              class="code-area"
+              placeholder="Pega aquí múltiples módulos MOD-XXX...&#10;&#10;Cada módulo completo con sus delimitadores [INICIO] y FIN."></textarea>
+  </div>
+  
+  <button class="btn-primary" onclick="aplicarCambio()">
+    ✅ Aplicar Cambio
+  </button>
+</div>
+<!-- MOD-008: FIN -->
+
+<!-- MOD-009: SECCIÓN RESULTADO [INICIO] -->
+<div class="section" id="seccionResultado" style="display:none;">
+  <h2>5. Código Resultante</h2>
+  <textarea id="codigoResultante"
+            class="code-area"
+            readonly></textarea>
+  <button class="btn-secondary" onclick="copiarResultado()">
+    📋 Copiar Código
+  </button>
+  <button class="btn-secondary" onclick="reiniciar()">
+    🔄 Nueva Modificación
+  </button>
+</div>
+<!-- MOD-009: FIN -->
+
+<!-- MOD-010: NOTIFICACIONES Y LOADING [INICIO] -->
+<div id="toast" class="toast"></div>
+<div id="loading" class="loading-overlay">
+  <div class="spinner"></div>
+  <p>Procesando...</p>
+</div>
+<!-- MOD-010: FIN -->
+
+<!-- MOD-011: CIERRE CONTAINER [INICIO] -->
+</div>
+<!-- MOD-011: FIN -->
+
+<!-- MOD-012: CÓDIGO DE CIERRE [INICIO] -->
+<?!= include('scripts'); ?>
+</body>
+</html>
+<!-- MOD-012: FIN -->
+
+<!-- MOD-099: NOTAS [INICIO] -->
+<!--
+DESCRIPCIÓN:
+Página principal (contenedor UI) de CodeWorkShop.
+Actúa como esqueleto visual y estructural para la modificación
+modular y jerárquica de código.
+
+ESTÁNDAR:
+- SOPORTE COMPLETO CodeWorkShop v3
+
+INTEGRACIÓN CON BACKEND:
+- Compatible con backend code.gs v01.11 / v01.12
+- Renderiza estructuras jerárquicas ya ordenadas por el backend
+- No asume listas planas de módulos
+
+FLUJO DE TRABAJO (v2.3):
+1. Usuario carga código original
+2. scripts.html envía código al backend
+3. Backend parsea, ordena y clasifica módulos y submódulos
+4. Sistema muestra módulos y submódulos respetando
+   el orden natural y jerárquico
+5. Usuario selecciona módulo o submódulo
+6. Se muestra el código actual
+7. Usuario pega nuevo código conservando el ID
+8. Backend reemplaza el bloque exacto
+9. Sistema muestra el resultado final
+
+DEPENDENCIAS:
+- style.html v01.08
+- scripts.html v01.09
+- Backend code.gs v01.11+
+
+ADVERTENCIAS:
+- NO modificar IDs de contenedores HTML
+- NO cambiar includes de style/scripts
+- El reemplazo depende del ID exacto del módulo
+
+ACTUALIZACIÓN:
+- Multi MOD V01.11
+-->
+<!-- MOD-099: FIN -->
