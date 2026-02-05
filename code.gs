@@ -3,8 +3,8 @@
 *****************************************
 PROYECTO: CodeWorkShop
 ARCHIVO: code.gs
-VERSIÓN: 01.45
-FECHA: 05/02/2026 09:38 (UTC-5)
+VERSIÓN: 01.46
+FECHA: 05/02/2026 14:43 (UTC-5)
 *****************************************
 */
 // MOD-001: FIN
@@ -1493,317 +1493,68 @@ function normalizarEspaciadoModulos(codigo) {
 }
 // MOD-015-S06: FIN
 
-// MOD-016: REENUMERACIÓN ETAPA 1 - PADRES [INICIO]
-
-// MOD-016-S01: FUNCIÓN PRINCIPAL ETAPA 1 [INICIO]
+// MOD-016: RENUMERAR PADRES [INICIO]
 /**
- * ETAPA 1: Reenumera módulos PADRES desde el primer intermedio detectado.
- * Los hijos heredan automáticamente el nuevo número del padre.
+ * Genera mapeo de reenumeración para módulos PADRES.
+ * Renumera secuencialmente eliminando letras intermedias.
  * 
  * PROCESO:
- * 1. Parsear y ordenar todos los módulos
- * 2. Detectar primer intermedio SOLO en nivel padre (ignora hijos)
- * 3. Generar mapeo de padres (secuencial desde el intermedio)
- * 4. Generar mapeo de hijos (heredan cambio del padre)
- * 5. Aplicar todos los cambios al código
- * 
- * EJEMPLO:
- * MOD-002A → MOD-002
- * MOD-003 → MOD-003
- * MOD-004 → MOD-004 (y sus hijos MOD-004-S01 → MOD-005-S01)
- * 
- * @param {string} codigoCompleto - Código original completo
- * @return {Object} {success, codigo?, mapeo?, error?}
- */
-function reenumerarPadres(codigoCompleto) {
-  try {
-    if (!codigoCompleto || typeof codigoCompleto !== 'string') {
-      return { success: false, error: 'Código inválido o vacío' };
-    }
-
-    Logger.log('🔷 ETAPA 1: Iniciando reenumeración de PADRES...');
-
-    // 🔹 PASO 1: Parsear y ordenar módulos
-    const resultadoParseo = parsearModulos(codigoCompleto);
-    if (!resultadoParseo.success) {
-      return { success: false, error: 'No se pudieron parsear módulos' };
-    }
-
-    const modulosOrdenados = ordenarModulos(resultadoParseo.modulos);
-    if (modulosOrdenados.length === 0) {
-      return { success: false, error: 'No hay módulos para reenumerar' };
-    }
-
-    Logger.log(`  ✓ ${modulosOrdenados.length} módulos parseados`);
-
-    // 🔹 PASO 2: Detectar primer intermedio SOLO en padres
-    const puntoInicio = detectarPrimerIntermedioPadre(modulosOrdenados);
-    
-    if (!puntoInicio.encontrado) {
-      Logger.log('  ℹ️ No se detectaron intermedios en padres');
-      return { 
-        success: true, 
-        codigo: codigoCompleto,
-        mapeo: {},
-        mensaje: 'No hay intermedios en padres. No es necesaria reenumeración.'
-      };
-    }
-
-    Logger.log(`  ✓ Primer intermedio padre: ${puntoInicio.id}`);
-
-    // 🔹 PASO 3: Generar mapeo completo (padres + hijos por herencia)
-    const mapeo = generarMapeoRenumeracionPadres(modulosOrdenados, puntoInicio);
-    
-    if (Object.keys(mapeo).length === 0) {
-      Logger.log('  ℹ️ No hay cambios necesarios');
-      return { 
-        success: true, 
-        codigo: codigoCompleto,
-        mapeo: {},
-        mensaje: 'No hay cambios necesarios.'
-      };
-    }
-
-    Logger.log(`  ✓ Mapeo generado: ${Object.keys(mapeo).length} cambios`);
-
-    // 🔹 PASO 4: Aplicar reenumeración
-    const codigoRenumerado = aplicarMapeoRenumeracion(codigoCompleto, mapeo);
-
-    Logger.log('✅ ETAPA 1 completada exitosamente');
-
-    return {
-      success: true,
-      codigo: codigoRenumerado,
-      mapeo: mapeo,
-      estadisticas: {
-        modulosProcesados: Object.keys(mapeo).length,
-        primerIntermedio: puntoInicio.id
-      }
-    };
-
-  } catch (error) {
-    Logger.log('❌ Error ETAPA 1: ' + error.message);
-    return { success: false, error: error.message };
-  }
-}
-// MOD-016-S01: FIN
-
-// MOD-016-S02: DETECTAR PRIMER INTERMEDIO PADRE [INICIO]
-/**
- * Detecta el primer módulo PADRE con letra (intermedio).
- * IGNORA completamente los hijos (SubMODs).
- * 
- * EJEMPLOS DETECTADOS:
- * - MOD-002A: ✓
- * - MOD-005B: ✓
- * 
- * EJEMPLOS IGNORADOS:
- * - MOD-004-S01A: ✗ (es hijo, no padre)
- * - MOD-003-S02X: ✗ (es hijo, no padre)
+ * - Itera módulos ordenados
+ * - Solo procesa módulos SIN -S (padres)
+ * - Asigna números secuenciales: 001, 002, 003...
+ * - Guarda mapeo para que los hijos lo hereden
  * 
  * @param {Array} modulos - Array de módulos ordenados
- * @return {Object} {encontrado: boolean, indice?: number, id?: string, numeroBase?: number}
+ * @param {Object} padresNuevos - Diccionario para guardar mapeo {numeroViejo: numeroNuevo}
+ * @return {Object} Mapeo de padres {idViejo: idNuevo}
  */
-function detectarPrimerIntermedioPadre(modulos) {
-  try {
-    for (let i = 0; i < modulos.length; i++) {
-      const mod = modulos[i];
-      const id = mod.id.trim();
-      
-      // Ignorar si es SubMOD
-      if (id.includes('-S')) continue;
-      
-      // Buscar letra después del número en MOD padre
-      // Formato: MOD-002A: o MOD-002AB:
-      const match = id.match(/MOD-(\d{3})([A-Z]+):/i);
-      
-      if (match) {
-        Logger.log(`  🔍 Detectado intermedio padre: ${id}`);
-        return {
-          encontrado: true,
-          indice: i,
-          id: id,
-          numeroBase: parseInt(match[1]),
-          letra: match[2]
-        };
-      }
-    }
-
-    return { encontrado: false };
-
-  } catch (error) {
-    Logger.log('❌ Error detectando intermedio padre: ' + error.message);
-    return { encontrado: false };
-  }
-}
-// MOD-016-S02: FIN
-
-// MOD-016-S03: GENERAR MAPEO PADRES + HERENCIA [INICIO]
-/**
- * Genera mapeo completo para Etapa 1:
- * - Reenumera padres secuencialmente desde el intermedio
- * - Hijos heredan el nuevo número del padre automáticamente
- * 
- * EJEMPLO:
- * Entrada:
- *   MOD-002A, MOD-003, MOD-004, MOD-004-S01, MOD-004-S01A, MOD-005
- * 
- * Mapeo generado:
- *   MOD-002A: → MOD-002:
- *   MOD-003: → MOD-003:
- *   MOD-004: → MOD-004:
- *   MOD-004-S01: → MOD-005-S01: (hereda cambio del padre)
- *   MOD-004-S01A: → MOD-005-S01A: (hereda cambio del padre, letra intacta)
- *   MOD-004-S02: → MOD-005-S02: (hereda cambio del padre)
- *   MOD-005: → MOD-005:
- * 
- * @param {Array} modulos - Array de módulos ordenados
- * @param {Object} puntoInicio - Resultado de detectarPrimerIntermedioPadre()
- * @return {Object} Diccionario de mapeo (ID_VIEJO: ID_NUEVO)
- */
-function generarMapeoRenumeracionPadres(modulos, puntoInicio) {
+function reenumerarPadres(modulos, padresNuevos) {
   try {
     const mapeo = {};
-    let contadorNuevo = puntoInicio.numeroBase;
-
-    Logger.log('  📋 Generando mapeo de reenumeración...');
-
-    for (let i = puntoInicio.indice; i < modulos.length; i++) {
-      const mod = modulos[i];
+    let contador = 1;
+    
+    Logger.log('📋 Renumerando PADRES...');
+    
+    for (const mod of modulos) {
       const idViejo = mod.id.trim();
       
-      const esSubmod = idViejo.includes('-S');
-      
-      if (!esSubmod) {
-        // ═══════════════════════════════════════════════
-        // PADRE: Reenumerar secuencialmente
-        // ═══════════════════════════════════════════════
+      // Solo procesar módulos PADRES (sin -S)
+      if (!idViejo.includes('-S')) {
+        
+        // Extraer número actual (con o sin letra)
+        // Formato: MOD-002A: o MOD-003:
         const match = idViejo.match(/MOD-(\d{3})([A-Z]*):/i);
+        
         if (match) {
-          const numeroViejo = parseInt(match[1]);
-          const idNuevo = `MOD-${String(contadorNuevo).padStart(3, '0')}:`;
+          const numeroViejo = match[1];
+          const numeroNuevo = String(contador).padStart(3, '0');
           
+          // Guardar en diccionario de padres (para que hijos lo usen)
+          padresNuevos[numeroViejo] = numeroNuevo;
+          
+          // Generar nuevo ID
+          const idNuevo = `MOD-${numeroNuevo}:`;
+          
+          // Solo agregar al mapeo si hay cambio
           if (idViejo !== idNuevo) {
             mapeo[idViejo] = idNuevo;
-            Logger.log(`    ${idViejo} → ${idNuevo}`);
+            Logger.log(`  ${idViejo} → ${idNuevo}`);
           }
           
-          contadorNuevo++;
-        }
-        
-      } else {
-        // ═══════════════════════════════════════════════
-        // HIJO: Heredar cambio del padre
-        // ═══════════════════════════════════════════════
-        const match = idViejo.match(/MOD-(\d{3})-S(\d{2})([A-Z]*):/i);
-        if (match) {
-          const numeroPadreViejo = parseInt(match[1]);
-          const numeroSub = match[2];
-          const letraSub = match[3];
-          
-          // Buscar si el padre cambió de número
-          const idPadreViejo = `MOD-${String(numeroPadreViejo).padStart(3, '0')}:`;
-          
-          if (mapeo[idPadreViejo]) {
-            // El padre cambió, heredar el nuevo número
-            const matchPadreNuevo = mapeo[idPadreViejo].match(/MOD-(\d{3}):/);
-            if (matchPadreNuevo) {
-              const numeroPadreNuevo = matchPadreNuevo[1];
-              const idNuevo = `MOD-${numeroPadreNuevo}-S${numeroSub}${letraSub}:`;
-              
-              if (idViejo !== idNuevo) {
-                mapeo[idViejo] = idNuevo;
-                Logger.log(`    ${idViejo} → ${idNuevo} (herencia)`);
-              }
-            }
-          }
+          contador++;
         }
       }
     }
-
+    
+    Logger.log(`✅ ${Object.keys(mapeo).length} padres renumerados`);
+    
     return mapeo;
-
+    
   } catch (error) {
-    Logger.log('❌ Error generando mapeo: ' + error.message);
+    Logger.log('❌ Error en reenumerarPadres: ' + error.message);
     return {};
   }
 }
-// MOD-016-S03: FIN
-
-// MOD-016-S04: APLICAR MAPEO REENUMERACIÓN [INICIO]
-/**
- * Aplica el mapeo de reenumeración al código completo.
- * Usa la lógica ultra agnóstica de MOD-009 (buscar + reemplazar).
- * 
- * @param {string} codigo - Código original
- * @param {Object} mapeo - Diccionario de reenumeración (ID_VIEJO: ID_NUEVO)
- * @return {string} Código con IDs actualizados
- */
-function aplicarMapeoRenumeracion(codigo, mapeo) {
-  try {
-    let codigoActualizado = codigo;
-    let cambiosAplicados = 0;
-
-    Logger.log('  🔧 Aplicando cambios al código...');
-
-    for (const [idViejo, idNuevo] of Object.entries(mapeo)) {
-      
-      // 1️⃣ Buscar módulo original (obtiene prefijo/sufijo)
-      const moduloInfo = buscarModuloOriginal(codigoActualizado, idViejo);
-      
-      if (!moduloInfo.success) {
-        Logger.log(`    ⚠️ No se encontró ${idViejo}`);
-        continue;
-      }
-
-      // 2️⃣ Encontrar posición exacta
-      const posiciones = encontrarPosicionModulo(
-        codigoActualizado, 
-        idViejo, 
-        moduloInfo.prefijo, 
-        moduloInfo.sufijo
-      );
-      
-      if (!posiciones.success) {
-        Logger.log(`    ⚠️ No se pudo localizar ${idViejo}`);
-        continue;
-      }
-
-      // 3️⃣ Extraer bloque del módulo
-      const codigoModulo = codigoActualizado.substring(
-        posiciones.inicio,
-        posiciones.fin
-      );
-
-      // 4️⃣ Reemplazar ID en el bloque
-      const idViejoLimpio = idViejo.replace(/:$/, '');
-      const idNuevoLimpio = idNuevo.replace(/:$/, '');
-      
-      const patronCompleto = idViejoLimpio + ':';
-      const reemplazoCompleto = idNuevoLimpio + ':';
-      
-      // Usar split/join para reemplazo seguro
-      const codigoModuloRenumerado = codigoModulo.split(patronCompleto).join(reemplazoCompleto);
-
-      // 5️⃣ Sustituir bloque en el código
-      const antes = codigoActualizado.substring(0, posiciones.inicio);
-      const despues = codigoActualizado.substring(posiciones.fin);
-      codigoActualizado = antes + codigoModuloRenumerado + despues;
-
-      cambiosAplicados++;
-    }
-
-    Logger.log(`  ✓ ${cambiosAplicados} cambios aplicados`);
-    
-    return codigoActualizado;
-
-  } catch (error) {
-    Logger.log('❌ Error aplicando mapeo: ' + error.message);
-    return codigo;
-  }
-}
-// MOD-016-S04: FIN
-
 // MOD-016: FIN
 
 // MOD-016-S01: FUNCIÓN PRINCIPAL REENUMERADOR [INICIO]
@@ -2233,601 +1984,173 @@ function convertirUltimoA099(codigo) {
 }
 // MOD-016-S05: FIN
 
-// MOD-017: REENUMERACIÓN ETAPA 2 - HIJOS INTERMEDIOS [INICIO]
-
-// MOD-017-S01: FUNCIÓN PRINCIPAL ETAPA 2 [INICIO]
+// MOD-017: RENUMERAR HIJOS [INICIO]
 /**
- * ETAPA 2: Reenumera hijos intermedios en TODOS los grupos de padres.
+ * Genera mapeo de reenumeración para módulos HIJOS.
+ * Los hijos heredan el nuevo número del padre automáticamente.
+ * Renumera secuencialmente dentro de cada grupo eliminando letras.
  * 
  * PROCESO:
- * 1. Parsear y ordenar módulos (después de Etapa 1)
- * 2. Identificar todos los grupos de padres
- * 3. Por cada grupo, detectar si tiene hijos intermedios
- * 4. Reenumerar localmente los hijos dentro de ese grupo
+ * - Itera módulos ordenados
+ * - Solo procesa módulos CON -S (hijos)
+ * - Hereda el nuevo número del padre
+ * - Renumera hijos secuencialmente dentro del grupo: S01, S02, S03...
+ * - Elimina letras intermedias (S01A → S01)
+ * 
+ * @param {Array} modulos - Array de módulos ordenados
+ * @param {Object} padresNuevos - Diccionario con mapeo de padres {numeroViejo: numeroNuevo}
+ * @return {Object} Mapeo de hijos {idViejo: idNuevo}
+ */
+function reenumerarHijos(modulos, padresNuevos) {
+  try {
+    const mapeo = {};
+    const gruposHijos = {};  // {numeroPadreNuevo: contadorHijos}
+    
+    Logger.log('📋 Renumerando HIJOS...');
+    
+    for (const mod of modulos) {
+      const idViejo = mod.id.trim();
+      
+      // Solo procesar módulos HIJOS (con -S)
+      if (idViejo.includes('-S')) {
+        
+        // Extraer información del hijo
+        // Formato: MOD-004-S01A: o MOD-004-S02:
+        const match = idViejo.match(/MOD-(\d{3})-S(\d{2})([A-Z]*):/i);
+        
+        if (match) {
+          const numeroPadreViejo = match[1];
+          const numeroPadreNuevo = padresNuevos[numeroPadreViejo];
+          
+          // Si el padre no cambió, usar el número viejo
+          const numPadre = numeroPadreNuevo || numeroPadreViejo;
+          
+          // Inicializar contador de hijos para este padre si no existe
+          if (!gruposHijos[numPadre]) {
+            gruposHijos[numPadre] = 1;
+          }
+          
+          // Asignar número secuencial al hijo
+          const numeroHijo = String(gruposHijos[numPadre]).padStart(2, '0');
+          
+          // Generar nuevo ID
+          const idNuevo = `MOD-${numPadre}-S${numeroHijo}:`;
+          
+          // Solo agregar al mapeo si hay cambio
+          if (idViejo !== idNuevo) {
+            mapeo[idViejo] = idNuevo;
+            Logger.log(`  ${idViejo} → ${idNuevo}`);
+          }
+          
+          // Incrementar contador de hijos para este padre
+          gruposHijos[numPadre]++;
+        }
+      }
+    }
+    
+    Logger.log(`✅ ${Object.keys(mapeo).length} hijos renumerados`);
+    
+    return mapeo;
+    
+  } catch (error) {
+    Logger.log('❌ Error en reenumerarHijos: ' + error.message);
+    return {};
+  }
+}
+// MOD-017: FIN
+
+// MOD-018: REENUMERACIÓN TOTAL [INICIO]
+/**
+ * Función orquestadora: reenumera TODO el código.
+ * Mantiene jerarquía padre-hijo.
+ * Elimina letras intermedias de padres e hijos.
+ * 
+ * PROCESO COMPLETO:
+ * 1. Parsear y ordenar todos los módulos
+ * 2. Renumerar padres secuencialmente (MOD-016)
+ * 3. Renumerar hijos heredando cambios (MOD-017)
+ * 4. Combinar ambos mapeos
  * 5. Aplicar todos los cambios al código
  * 
  * EJEMPLO:
- * Entrada (después de Etapa 1):
- *   MOD-002, MOD-003, MOD-003-S01R, MOD-003-S02, MOD-004, MOD-004-S01A, MOD-004-S02
+ * Entrada:  MOD-001, MOD-002, MOD-002A, MOD-003, MOD-004, MOD-004-S01A, MOD-004-S01
+ * Salida:   MOD-001, MOD-002, MOD-003, MOD-004, MOD-005, MOD-005-S01, MOD-005-S02
  * 
- * Salida:
- *   MOD-002, MOD-003, MOD-003-S01, MOD-003-S02, MOD-004, MOD-004-S01, MOD-004-S02
- * 
- * @param {string} codigoCompleto - Código después de Etapa 1
- * @return {Object} {success, codigo?, mapeo?, estadisticas?, error?}
+ * @param {string} codigoOriginal - Código completo a reenumerar
+ * @return {Object} {success, codigo?, estadisticas?, mensaje?, error?}
  */
-function reenumerarHijos(codigoCompleto) {
+function reenumerarTotal(codigoOriginal) {
   try {
-    if (!codigoCompleto || typeof codigoCompleto !== 'string') {
+    if (!codigoOriginal || typeof codigoOriginal !== 'string') {
       return { success: false, error: 'Código inválido o vacío' };
     }
 
-    Logger.log('🔶 ETAPA 2: Iniciando reenumeración de HIJOS...');
-
-    // 🔹 PASO 1: Parsear y ordenar módulos
-    const resultadoParseo = parsearModulos(codigoCompleto);
-    if (!resultadoParseo.success) {
-      return { success: false, error: 'No se pudieron parsear módulos' };
-    }
-
-    const modulosOrdenados = ordenarModulos(resultadoParseo.modulos);
-    if (modulosOrdenados.length === 0) {
-      return { success: false, error: 'No hay módulos para procesar' };
-    }
-
-    Logger.log(`  ✓ ${modulosOrdenados.length} módulos parseados`);
-
-    // 🔹 PASO 2: Identificar todos los grupos de padres
-    const gruposPadres = identificarGruposPadres(modulosOrdenados);
-    
-    if (gruposPadres.length === 0) {
-      Logger.log('  ℹ️ No hay grupos de padres con hijos');
-      return { 
-        success: true, 
-        codigo: codigoCompleto,
-        mensaje: 'No hay grupos con hijos para reenumerar.'
-      };
-    }
-
-    Logger.log(`  ✓ ${gruposPadres.length} grupos de padres identificados`);
-
-    // 🔹 PASO 3: Detectar intermedios en cada grupo y generar mapeo
-    const mapeoCompleto = {};
-    let gruposConIntermedios = 0;
-
-    for (const grupo of gruposPadres) {
-      const resultadoGrupo = detectarYMapearGrupo(grupo, modulosOrdenados);
-      
-      if (resultadoGrupo.tieneIntermedios) {
-        gruposConIntermedios++;
-        Object.assign(mapeoCompleto, resultadoGrupo.mapeo);
-      }
-    }
-
-    if (Object.keys(mapeoCompleto).length === 0) {
-      Logger.log('  ℹ️ No se detectaron hijos intermedios');
-      return { 
-        success: true, 
-        codigo: codigoCompleto,
-        mensaje: 'No hay hijos intermedios para reenumerar.'
-      };
-    }
-
-    Logger.log(`  ✓ ${gruposConIntermedios} grupo(s) con intermedios detectados`);
-    Logger.log(`  ✓ Mapeo generado: ${Object.keys(mapeoCompleto).length} cambios`);
-
-    // 🔹 PASO 4: Aplicar reenumeración
-    const codigoRenumerado = aplicarMapeoRenumeracionHijos(codigoCompleto, mapeoCompleto);
-
-    Logger.log('✅ ETAPA 2 completada exitosamente');
-
-    return {
-      success: true,
-      codigo: codigoRenumerado,
-      mapeo: mapeoCompleto,
-      estadisticas: {
-        modulosProcesados: Object.keys(mapeoCompleto).length,
-        gruposConIntermedios: gruposConIntermedios
-      }
-    };
-
-  } catch (error) {
-    Logger.log('❌ Error ETAPA 2: ' + error.message);
-    return { success: false, error: error.message };
-  }
-}
-// MOD-017-S01: FIN
-
-// MOD-017-S02: IDENTIFICAR GRUPOS DE PADRES [INICIO]
-/**
- * Identifica todos los grupos de padres que tienen hijos.
- * 
- * @param {Array} modulos - Array de módulos ordenados
- * @return {Array} Array de objetos {numeroPadre, hijos: [...]}
- */
-function identificarGruposPadres(modulos) {
-  try {
-    const grupos = {};
-
-    // Agrupar hijos por número de padre
-    modulos.forEach(mod => {
-      const id = mod.id.trim();
-      
-      // Detectar si es SubMOD
-      const match = id.match(/MOD-(\d{3})-S/);
-      if (match) {
-        const numeroPadre = parseInt(match[1]);
-        
-        if (!grupos[numeroPadre]) {
-          grupos[numeroPadre] = {
-            numeroPadre: numeroPadre,
-            hijos: []
-          };
-        }
-        
-        grupos[numeroPadre].hijos.push(mod);
-      }
-    });
-
-    // Convertir objeto a array
-    return Object.values(grupos);
-
-  } catch (error) {
-    Logger.log('❌ Error identificando grupos: ' + error.message);
-    return [];
-  }
-}
-// MOD-017-S02: FIN
-
-// MOD-017-S03: DETECTAR Y MAPEAR GRUPO [INICIO]
-/**
- * Detecta si un grupo de hijos tiene intermedios y genera su mapeo.
- * 
- * @param {Object} grupo - {numeroPadre, hijos: [...]}
- * @param {Array} todosModulos - Array completo de módulos
- * @return {Object} {tieneIntermedios: boolean, mapeo: {...}}
- */
-function detectarYMapearGrupo(grupo, todosModulos) {
-  try {
-    const resultado = {
-      tieneIntermedios: false,
-      mapeo: {}
-    };
-
-    // Buscar primer hijo intermedio en este grupo
-    let primerIntermedio = null;
-    let indiceIntermedio = -1;
-
-    for (let i = 0; i < grupo.hijos.length; i++) {
-      const hijo = grupo.hijos[i];
-      const id = hijo.id.trim();
-      
-      // Detectar letra después del número de submódulo
-      // Formato: MOD-003-S01A: o MOD-003-S01AB:
-      const match = id.match(/MOD-(\d{3})-S(\d{2})([A-Z]+):/i);
-      
-      if (match) {
-        primerIntermedio = {
-          id: id,
-          numeroPadre: parseInt(match[1]),
-          numeroSub: parseInt(match[2]),
-          letra: match[3]
-        };
-        indiceIntermedio = i;
-        break;
-      }
-    }
-
-    // Si no hay intermedios en este grupo, retornar
-    if (!primerIntermedio) {
-      return resultado;
-    }
-
-    resultado.tieneIntermedios = true;
-    
-    Logger.log(`  🔍 Grupo MOD-${String(grupo.numeroPadre).padStart(3, '0')}: intermedio detectado en ${primerIntermedio.id}`);
-
-    // Generar mapeo desde el intermedio en adelante
-    let contadorSub = primerIntermedio.numeroSub;
-
-    for (let i = indiceIntermedio; i < grupo.hijos.length; i++) {
-      const hijo = grupo.hijos[i];
-      const idViejo = hijo.id.trim();
-      
-      const match = idViejo.match(/MOD-(\d{3})-S(\d{2})([A-Z]*):/i);
-      if (match) {
-        const numPadre = match[1];
-        const idNuevo = `MOD-${numPadre}-S${String(contadorSub).padStart(2, '0')}:`;
-        
-        if (idViejo !== idNuevo) {
-          resultado.mapeo[idViejo] = idNuevo;
-          Logger.log(`    ${idViejo} → ${idNuevo}`);
-        }
-        
-        contadorSub++;
-      }
-    }
-
-    return resultado;
-
-  } catch (error) {
-    Logger.log('❌ Error detectando/mapeando grupo: ' + error.message);
-    return { tieneIntermedios: false, mapeo: {} };
-  }
-}
-// MOD-017-S03: FIN
-
-// MOD-017-S04: APLICAR MAPEO HIJOS [INICIO]
-/**
- * Aplica el mapeo de reenumeración de hijos al código completo.
- * Usa la misma lógica ultra agnóstica de MOD-016-S04.
- * 
- * @param {string} codigo - Código original
- * @param {Object} mapeo - Diccionario de reenumeración (ID_VIEJO: ID_NUEVO)
- * @return {string} Código con IDs actualizados
- */
-function aplicarMapeoRenumeracionHijos(codigo, mapeo) {
-  try {
-    let codigoActualizado = codigo;
-    let cambiosAplicados = 0;
-
-    Logger.log('  🔧 Aplicando cambios de hijos al código...');
-
-    for (const [idViejo, idNuevo] of Object.entries(mapeo)) {
-      
-      // 1️⃣ Buscar módulo original (obtiene prefijo/sufijo)
-      const moduloInfo = buscarModuloOriginal(codigoActualizado, idViejo);
-      
-      if (!moduloInfo.success) {
-        Logger.log(`    ⚠️ No se encontró ${idViejo}`);
-        continue;
-      }
-
-      // 2️⃣ Encontrar posición exacta
-      const posiciones = encontrarPosicionModulo(
-        codigoActualizado, 
-        idViejo, 
-        moduloInfo.prefijo, 
-        moduloInfo.sufijo
-      );
-      
-      if (!posiciones.success) {
-        Logger.log(`    ⚠️ No se pudo localizar ${idViejo}`);
-        continue;
-      }
-
-      // 3️⃣ Extraer bloque del módulo
-      const codigoModulo = codigoActualizado.substring(
-        posiciones.inicio,
-        posiciones.fin
-      );
-
-      // 4️⃣ Reemplazar ID en el bloque
-      const idViejoLimpio = idViejo.replace(/:$/, '');
-      const idNuevoLimpio = idNuevo.replace(/:$/, '');
-      
-      const patronCompleto = idViejoLimpio + ':';
-      const reemplazoCompleto = idNuevoLimpio + ':';
-      
-      // Usar split/join para reemplazo seguro
-      const codigoModuloRenumerado = codigoModulo.split(patronCompleto).join(reemplazoCompleto);
-
-      // 5️⃣ Sustituir bloque en el código
-      const antes = codigoActualizado.substring(0, posiciones.inicio);
-      const despues = codigoActualizado.substring(posiciones.fin);
-      codigoActualizado = antes + codigoModuloRenumerado + despues;
-
-      cambiosAplicados++;
-    }
-
-    Logger.log(`  ✓ ${cambiosAplicados} cambios aplicados`);
-    
-    return codigoActualizado;
-
-  } catch (error) {
-    Logger.log('❌ Error aplicando mapeo de hijos: ' + error.message);
-    return codigo;
-  }
-}
-// MOD-017-S04: FIN
-
-// MOD-017: FIN
-
-// MOD-018: ORQUESTADOR REENUMERACIÓN COMPLETA [INICIO]
-
-// MOD-018-S01: FUNCIÓN ORQUESTADORA [INICIO]
-/**
- * Orquestador completo de reenumeración.
- * Ejecuta el proceso en 3 pasos secuenciales.
- * 
- * FLUJO:
- * 1. ETAPA 1: Reenumerar padres + herencia (MOD-016)
- * 2. ETAPA 2: Reenumerar hijos intermedios (MOD-017)
- * 3. CONVERSIÓN: Último MOD → MOD-099
- * 
- * EJEMPLO COMPLETO:
- * Entrada:
- *   MOD-001, MOD-002A, MOD-003, MOD-003-S01R, MOD-003-S02, MOD-004
- * 
- * Después de Etapa 1:
- *   MOD-001, MOD-002, MOD-003, MOD-003-S01R, MOD-003-S02, MOD-004
- * 
- * Después de Etapa 2:
- *   MOD-001, MOD-002, MOD-003, MOD-003-S01, MOD-003-S02, MOD-004
- * 
- * Después de Conversión:
- *   MOD-001, MOD-002, MOD-003, MOD-003-S01, MOD-003-S02, MOD-099
- * 
- * @param {string} codigoCompleto - Código original completo
- * @return {Object} {success, codigo?, estadisticas?, error?}
- */
-function reenumerarModulosCompleto(codigoCompleto) {
-  try {
-    if (!codigoCompleto || typeof codigoCompleto !== 'string') {
-      return { success: false, error: 'Código inválido o vacío' };
-    }
-
-    Logger.log('🔷🔶 REENUMERACIÓN COMPLETA INICIADA');
+    Logger.log('🔢 REENUMERACIÓN TOTAL INICIADA');
     Logger.log('═══════════════════════════════════════');
-
-    const estadisticas = {
-      etapa1: { modulosProcesados: 0, primerIntermedio: null },
-      etapa2: { modulosProcesados: 0, gruposConIntermedios: 0 },
-      conversion: { ultimo: null, convertido: false }
-    };
-
-    let codigoActualizado = codigoCompleto;
-
-    // ═══════════════════════════════════════════════════════
-    // ETAPA 1: REENUMERAR PADRES + HERENCIA
-    // ═══════════════════════════════════════════════════════
-    Logger.log('');
-    const resultadoEtapa1 = reenumerarPadres(codigoActualizado);
-
-    if (!resultadoEtapa1.success) {
-      return { 
-        success: false, 
-        error: `Error en Etapa 1: ${resultadoEtapa1.error}` 
-      };
-    }
-
-    // Si Etapa 1 no hizo cambios (no hay intermedios de padres)
-    if (resultadoEtapa1.mensaje) {
-      Logger.log(`  ℹ️ Etapa 1: ${resultadoEtapa1.mensaje}`);
-    } else {
-      codigoActualizado = resultadoEtapa1.codigo;
-      if (resultadoEtapa1.estadisticas) {
-        estadisticas.etapa1 = resultadoEtapa1.estadisticas;
-      }
-      Logger.log(`  ✅ Etapa 1: ${estadisticas.etapa1.modulosProcesados} módulo(s) procesado(s)`);
-    }
-
-    // ═══════════════════════════════════════════════════════
-    // ETAPA 2: REENUMERAR HIJOS INTERMEDIOS
-    // ═══════════════════════════════════════════════════════
-    Logger.log('');
-    const resultadoEtapa2 = reenumerarHijos(codigoActualizado);
-
-    if (!resultadoEtapa2.success) {
-      return { 
-        success: false, 
-        error: `Error en Etapa 2: ${resultadoEtapa2.error}` 
-      };
-    }
-
-    // Si Etapa 2 no hizo cambios (no hay intermedios de hijos)
-    if (resultadoEtapa2.mensaje) {
-      Logger.log(`  ℹ️ Etapa 2: ${resultadoEtapa2.mensaje}`);
-    } else {
-      codigoActualizado = resultadoEtapa2.codigo;
-      if (resultadoEtapa2.estadisticas) {
-        estadisticas.etapa2 = resultadoEtapa2.estadisticas;
-      }
-      Logger.log(`  ✅ Etapa 2: ${estadisticas.etapa2.modulosProcesados} módulo(s) procesado(s)`);
-    }
-
-    // ═══════════════════════════════════════════════════════
-    // CONVERSIÓN: ÚLTIMO MOD → MOD-099
-    // ═══════════════════════════════════════════════════════
-    Logger.log('');
-    const resultadoConversion = convertirUltimoA099(codigoActualizado);
-
-    if (!resultadoConversion.success) {
-      Logger.log(`  ⚠️ Conversión: ${resultadoConversion.mensaje || 'No se pudo convertir'}`);
-    } else {
-      if (resultadoConversion.convertido) {
-        codigoActualizado = resultadoConversion.codigo;
-        estadisticas.conversion.ultimo = resultadoConversion.idViejo;
-        estadisticas.conversion.convertido = true;
-        Logger.log(`  ✅ Conversión: ${resultadoConversion.idViejo} → MOD-099:`);
-      } else {
-        Logger.log(`  ℹ️ Conversión: ${resultadoConversion.mensaje}`);
-      }
-    }
-
-    // ═══════════════════════════════════════════════════════
-    // RESUMEN FINAL
-    // ═══════════════════════════════════════════════════════
-    Logger.log('');
-    Logger.log('═══════════════════════════════════════');
-    Logger.log('✅ REENUMERACIÓN COMPLETA FINALIZADA');
-    Logger.log(`📊 Etapa 1: ${estadisticas.etapa1.modulosProcesados} cambios`);
-    Logger.log(`📊 Etapa 2: ${estadisticas.etapa2.modulosProcesados} cambios`);
-    Logger.log(`📊 Conversión: ${estadisticas.conversion.convertido ? 'Aplicada' : 'No aplicada'}`);
-
-    return {
-      success: true,
-      codigo: codigoActualizado,
-      estadisticas: estadisticas
-    };
-
-  } catch (error) {
-    Logger.log('❌ Error en orquestador completo: ' + error.message);
-    return { success: false, error: error.message };
-  }
-}
-// MOD-018-S01: FIN
-
-// MOD-018-S02: CONVERTIR ÚLTIMO A 099 [INICIO]
-/**
- * Convierte el último MOD padre a MOD-099.
- * También convierte sus hijos (si los tiene).
- * 
- * EJEMPLO:
- * MOD-015 (último padre) → MOD-099
- * MOD-015-S01 → MOD-099-S01
- * MOD-015-S02 → MOD-099-S02
- * 
- * @param {string} codigo - Código después de Etapa 1 y 2
- * @return {Object} {success, codigo?, convertido, idViejo?, mensaje?}
- */
-function convertirUltimoA099(codigo) {
-  try {
-    Logger.log('🔄 Conversión: Buscando último MOD padre...');
 
     // 🔹 PASO 1: Parsear módulos
-    const resultado = parsearModulos(codigo);
+    const resultado = parsearModulos(codigoOriginal);
     if (!resultado.success) {
-      return { 
-        success: false, 
-        mensaje: 'No se pudieron parsear módulos' 
-      };
+      return { success: false, error: 'Error al parsear módulos: ' + resultado.error };
     }
 
-    const modulos = resultado.modulos;
+    Logger.log(`✅ ${resultado.modulos.length} módulos parseados`);
+
+    // 🔹 PASO 2: Ordenar módulos
+    const ordenados = ordenarModulos(resultado.modulos);
     
-    // 🔹 PASO 2: Encontrar último MOD padre (sin -S)
-    let ultimoPadre = null;
-    for (let i = modulos.length - 1; i >= 0; i--) {
-      const mod = modulos[i];
-      if (!mod.id.includes('-S')) {
-        ultimoPadre = mod;
-        break;
-      }
-    }
-
-    if (!ultimoPadre) {
+    if (ordenados.length === 0) {
       return { 
         success: true, 
-        convertido: false,
-        mensaje: 'No se encontró ningún MOD padre' 
+        codigo: codigoOriginal,
+        mensaje: 'No hay módulos para reenumerar'
       };
     }
 
-    const idUltimoPadre = ultimoPadre.id.trim();
+    Logger.log(`✅ ${ordenados.length} módulos ordenados`);
 
-    // 🔹 PASO 3: Si ya es MOD-099:, no hacer nada
-    if (idUltimoPadre === 'MOD-099:') {
+    // 🔹 PASO 3: Renumerar PADRES
+    const padresNuevos = {};  // Diccionario compartido
+    const mapeoPadres = reenumerarPadres(ordenados, padresNuevos);
+
+    // 🔹 PASO 4: Renumerar HIJOS (heredan cambios de padres)
+    const mapeoHijos = reenumerarHijos(ordenados, padresNuevos);
+
+    // 🔹 PASO 5: Combinar mapeos
+    const mapeoCompleto = { ...mapeoPadres, ...mapeoHijos };
+
+    if (Object.keys(mapeoCompleto).length === 0) {
+      Logger.log('ℹ️ No hay cambios necesarios');
       return { 
         success: true, 
-        convertido: false,
-        mensaje: 'El último MOD ya es MOD-099:' 
+        codigo: codigoOriginal,
+        mensaje: 'No hay módulos intermedios. No es necesaria reenumeración.'
       };
     }
 
-    // 🔹 PASO 4: Extraer número del último padre
-    const match = idUltimoPadre.match(/MOD-(\d{3}):/);
-    if (!match) {
-      return { 
-        success: false, 
-        mensaje: 'Formato de ID inválido en último padre' 
-      };
-    }
+    Logger.log(`📊 Total de cambios: ${Object.keys(mapeoCompleto).length}`);
 
-    const numeroUltimo = match[1];
+    // 🔹 PASO 6: Aplicar mapeo completo al código
+    const codigoNuevo = aplicarMapeoRenumeracion(codigoOriginal, mapeoCompleto);
 
-    Logger.log(`  🔍 Último MOD padre: MOD-${numeroUltimo}:`);
-
-    let codigoActualizado = codigo;
-
-    // 🔹 PASO 5: Reemplazar el MOD padre
-    const busquedaPadre = buscarModuloOriginal(codigoActualizado, idUltimoPadre);
-    
-    if (busquedaPadre.success) {
-      const posicionesPadre = encontrarPosicionModulo(
-        codigoActualizado,
-        idUltimoPadre,
-        busquedaPadre.prefijo,
-        busquedaPadre.sufijo
-      );
-
-      if (posicionesPadre.success) {
-        const codigoModuloPadre = codigoActualizado.substring(
-          posicionesPadre.inicio,
-          posicionesPadre.fin
-        );
-
-        const codigoPadreRenumerado = codigoModuloPadre
-          .split(`MOD-${numeroUltimo}:`)
-          .join('MOD-099:');
-
-        const antes = codigoActualizado.substring(0, posicionesPadre.inicio);
-        const despues = codigoActualizado.substring(posicionesPadre.fin);
-        codigoActualizado = antes + codigoPadreRenumerado + despues;
-
-        Logger.log(`    ✓ MOD-${numeroUltimo}: → MOD-099:`);
-      }
-    }
-
-    // 🔹 PASO 6: Reemplazar los hijos si existen
-    const hijosDelUltimo = modulos.filter(m => {
-      const matchHijo = m.id.match(/MOD-(\d{3})-S/);
-      return matchHijo && matchHijo[1] === numeroUltimo;
-    });
-
-    if (hijosDelUltimo.length > 0) {
-      Logger.log(`  🔍 Convirtiendo ${hijosDelUltimo.length} hijo(s)...`);
-
-      for (const hijo of hijosDelUltimo) {
-        const idHijo = hijo.id.trim();
-        
-        const busquedaHijo = buscarModuloOriginal(codigoActualizado, idHijo);
-        
-        if (busquedaHijo.success) {
-          const posicionesHijo = encontrarPosicionModulo(
-            codigoActualizado,
-            idHijo,
-            busquedaHijo.prefijo,
-            busquedaHijo.sufijo
-          );
-
-          if (posicionesHijo.success) {
-            const codigoModuloHijo = codigoActualizado.substring(
-              posicionesHijo.inicio,
-              posicionesHijo.fin
-            );
-
-            const codigoHijoRenumerado = codigoModuloHijo
-              .split(`MOD-${numeroUltimo}-S`)
-              .join('MOD-099-S');
-
-            const antes = codigoActualizado.substring(0, posicionesHijo.inicio);
-            const despues = codigoActualizado.substring(posicionesHijo.fin);
-            codigoActualizado = antes + codigoHijoRenumerado + despues;
-
-            Logger.log(`    ✓ ${idHijo} → MOD-099-S...`);
-          }
-        }
-      }
-    }
+    Logger.log('═══════════════════════════════════════');
+    Logger.log('✅ REENUMERACIÓN TOTAL COMPLETADA');
 
     return {
       success: true,
-      codigo: codigoActualizado,
-      convertido: true,
-      idViejo: idUltimoPadre
+      codigo: codigoNuevo,
+      estadisticas: {
+        padresRenumerados: Object.keys(mapeoPadres).length,
+        hijosRenumerados: Object.keys(mapeoHijos).length,
+        totalCambios: Object.keys(mapeoCompleto).length
+      }
     };
 
   } catch (error) {
-    Logger.log('❌ Error convirtiendo último a 099: ' + error.message);
-    return { 
-      success: false, 
-      mensaje: error.message 
-    };
+    Logger.log('❌ Error en reenumerarTotal: ' + error.message);
+    return { success: false, error: error.message };
   }
 }
-// MOD-018-S02: FIN
-
 // MOD-018: FIN
 
 // MOD-099: NOTAS [INICIO]
