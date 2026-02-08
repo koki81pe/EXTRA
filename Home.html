@@ -1,0 +1,1429 @@
+<!DOCTYPE html>
+<html lang="es">
+<!-- 
+  ============================================
+  CODEHUBBER - HOME.HTML v2.5
+  Última actualización: 24/12/2024
+  Mejora: Sistema de alertas persistentes + Loading mejorado
+  ============================================
+-->
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CodeHubber v2.5</title>
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .container {
+      display: flex;
+      height: 100vh;
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+      width: 250px;
+      background: #161b22;
+      border-right: 1px solid #30363d;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-header {
+      padding: 16px;
+      border-bottom: 1px solid #30363d;
+    }
+
+    .sidebar-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #58a6ff;
+      margin-bottom: 12px;
+    }
+
+    .btn-new-project {
+      width: 100%;
+      padding: 6px 12px;
+      background: #238636;
+      border: none;
+      border-radius: 6px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .btn-new-project:hover {
+      background: #2ea043;
+    }
+
+    .btn-delete-project {
+      width: 100%;
+      padding: 6px 12px;
+      background: #21262d;
+      border: 1px solid #da3633;
+      border-radius: 6px;
+      color: #f85149;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .btn-delete-project:hover {
+      background: #da3633;
+      color: #fff;
+    }
+
+    .btn-delete-project:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .project-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 0;
+    }
+
+    .project-item {
+      display: flex;
+      align-items: center;
+      padding: 8px 16px;
+      cursor: pointer;
+      transition: background 0.2s;
+      gap: 8px;
+    }
+
+    .project-item:hover {
+      background: #21262d;
+    }
+
+    .project-item.active {
+      background: #1f6feb;
+      color: #fff;
+    }
+
+    .project-order {
+      width: 40px;
+      padding: 4px;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 4px;
+      text-align: center;
+      font-size: 12px;
+      color: #c9d1d9;
+    }
+
+    .project-order:focus {
+      outline: none;
+      border-color: #58a6ff;
+    }
+
+    .project-name {
+      flex: 1;
+      font-size: 14px;
+    }
+
+    /* MAIN CONTENT */
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* TABS */
+    .tabs {
+      display: flex;
+      background: #0d1117;
+      border-bottom: 1px solid #30363d;
+      padding: 0 16px;
+      gap: 4px;
+    }
+
+    .tab {
+      padding: 12px 16px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      font-size: 14px;
+      color: #8b949e;
+      transition: all 0.2s;
+    }
+
+    .tab:hover {
+      color: #c9d1d9;
+    }
+
+    .tab.active {
+      color: #c9d1d9;
+      border-bottom-color: #f78166;
+    }
+
+    /* CONTENT AREA */
+    .content-area {
+      flex: 1;
+      padding: 24px;
+      overflow-y: auto;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* FORM ELEMENTS */
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    textarea, input[type="text"] {
+      width: 100%;
+      padding: 8px 12px;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      color: #c9d1d9;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      resize: vertical;
+    }
+
+    textarea {
+      min-height: 200px;
+    }
+
+    textarea:focus, input:focus {
+      outline: none;
+      border-color: #58a6ff;
+    }
+
+    /* BUTTONS */
+    .button-group {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: #238636;
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: #2ea043;
+    }
+
+    .btn-secondary {
+      background: #21262d;
+      color: #c9d1d9;
+      border: 1px solid #30363d;
+    }
+
+    .btn-secondary:hover {
+      background: #30363d;
+    }
+
+    .btn-danger {
+      background: #da3633;
+      color: #fff;
+    }
+
+    .btn-danger:hover {
+      background: #b62324;
+    }
+
+    /* EMPTY STATE */
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      color: #8b949e;
+    }
+
+    .empty-state h3 {
+      margin-bottom: 12px;
+      font-size: 20px;
+    }
+
+    /* MESSAGES */
+    .message {
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .message.success {
+      background: #1f6feb20;
+      border: 1px solid #1f6feb;
+      color: #58a6ff;
+    }
+
+    .message.error {
+      background: #da363320;
+      border: 1px solid #da3633;
+      color: #f85149;
+    }
+
+    /* MODAL OVERLAY */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(1, 4, 9, 0.8);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .modal {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 24px;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-header {
+      margin-bottom: 16px;
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #c9d1d9;
+    }
+
+    .modal-body {
+      margin-bottom: 20px;
+    }
+
+    .modal-footer {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .modal-input {
+      width: 100%;
+      padding: 8px 12px;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      color: #c9d1d9;
+      font-size: 14px;
+    }
+
+    .modal-input:focus {
+      outline: none;
+      border-color: #58a6ff;
+    }
+
+    .modal-text {
+      color: #8b949e;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .modal-highlight {
+      color: #f85149;
+      font-weight: 600;
+    }
+
+    /* INFO BOX */
+    .info-box {
+      background: #1f6feb20;
+      border: 1px solid #1f6feb;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      color: #58a6ff;
+    }
+
+    /* ====================================
+       SISTEMA DE ALERTAS PERSISTENTES v2.5
+       ==================================== */
+
+    .alert-persistent {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #161b22;
+      border: 2px solid #da3633;
+      border-radius: 8px;
+      padding: 24px;
+      max-width: 700px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
+      z-index: 2000;
+      display: none;
+      animation: slideIn 0.3s ease;
+    }
+
+    .alert-persistent.active {
+      display: block;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translate(-50%, -60%);
+        opacity: 0;
+      }
+      to {
+        transform: translate(-50%, -50%);
+        opacity: 1;
+      }
+    }
+
+    .alert-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(1, 4, 9, 0.9);
+      z-index: 1999;
+      display: none;
+      backdrop-filter: blur(4px);
+    }
+
+    .alert-overlay.active {
+      display: block;
+    }
+
+    .alert-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #30363d;
+    }
+
+    .alert-icon {
+      font-size: 32px;
+      flex-shrink: 0;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    .alert-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #f85149;
+      flex: 1;
+    }
+
+    .alert-title.warning {
+      color: #ff9800;
+    }
+
+    .alert-title.success {
+      color: #4CAF50;
+    }
+
+    .alert-close-btn {
+      background: none;
+      border: none;
+      color: #8b949e;
+      cursor: pointer;
+      font-size: 24px;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+
+    .alert-close-btn:hover {
+      background: #30363d;
+      color: #c9d1d9;
+    }
+
+    .alert-body {
+      margin-bottom: 20px;
+    }
+
+    .alert-message {
+      color: #c9d1d9;
+      font-size: 14px;
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+
+    .alert-stats {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 16px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .stat-item {
+      text-align: center;
+    }
+
+    .stat-value {
+      display: block;
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .stat-value.success { color: #4CAF50; }
+    .stat-value.error { color: #f85149; }
+    .stat-value.total { color: #58a6ff; }
+
+    .stat-label {
+      display: block;
+      font-size: 12px;
+      color: #8b949e;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .alert-details {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .alert-details-header {
+      color: #f85149;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #30363d;
+    }
+
+    .alert-detail-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 8px 0;
+      color: #8b949e;
+      font-size: 12px;
+      font-family: 'Courier New', monospace;
+      border-bottom: 1px solid #21262d;
+    }
+
+    .alert-detail-item:last-child {
+      border-bottom: none;
+    }
+
+    .alert-detail-icon {
+      color: #f85149;
+      font-weight: bold;
+      flex-shrink: 0;
+      width: 20px;
+      text-align: center;
+    }
+
+    .alert-detail-text {
+      flex: 1;
+      word-break: break-word;
+      line-height: 1.5;
+    }
+
+    .alert-footer {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .alert-btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .alert-btn-primary {
+      background: #238636;
+      color: #fff;
+    }
+
+    .alert-btn-primary:hover {
+      background: #2ea043;
+    }
+
+    .alert-btn-secondary {
+      background: #21262d;
+      color: #c9d1d9;
+      border: 1px solid #30363d;
+    }
+
+    .alert-btn-secondary:hover {
+      background: #30363d;
+    }
+
+    /* Loading overlay */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(1, 4, 9, 0.95);
+      z-index: 1998;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(3px);
+    }
+
+    .loading-overlay.active {
+      display: flex;
+    }
+
+    .loading-content {
+      text-align: center;
+    }
+
+    .loading-spinner {
+      width: 60px;
+      height: 60px;
+      border: 5px solid #30363d;
+      border-top: 5px solid #58a6ff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      color: #c9d1d9;
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .loading-subtext {
+      color: #8b949e;
+      font-size: 14px;
+    }
+
+    .loading-progress {
+      margin-top: 16px;
+      color: #58a6ff;
+      font-size: 13px;
+      font-family: 'Courier New', monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-title">📦 Proyectos</div>
+        <button class="btn-new-project" onclick="abrirModalNuevoProyecto()">+ Agregar</button>
+        <button class="btn-delete-project" id="btnEliminarProyecto" onclick="abrirModalEliminar()" disabled>🗑️ Eliminar proyecto</button>
+      </div>
+      
+      <div class="project-list" id="projectList">
+        <!-- Proyectos se cargan aquí dinámicamente -->
+      </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+      <!-- TABS -->
+      <div class="tabs">
+        <div class="tab active" data-tab="solidcode" onclick="cambiarTab('solidcode')">🔧 SolidCode</div>
+        <div class="tab" data-tab="linklist" onclick="cambiarTab('linklist')">🔗 LinkList</div>
+        <div class="tab" data-tab="info" onclick="cambiarTab('info')">ℹ️ Info</div>
+      </div>
+
+      <!-- CONTENT AREA -->
+      <div class="content-area">
+        <div id="message" class="message"></div>
+
+        <!-- EMPTY STATE -->
+        <div id="emptyState" class="empty-state">
+          <h3>👋 Bienvenido a CodeHubber</h3>
+          <p>Crea un nuevo proyecto para comenzar</p>
+        </div>
+
+        <!-- PROJECT CONTENT -->
+        <div id="projectContent" style="display: none;">
+          
+          <!-- TAB: SOLIDCODE -->
+          <div id="tab-solidcode" class="tab-content active">
+            <div class="form-group">
+              <label>🔗 Raw LinkList URL (GitHub Gist/Raw)</label>
+              <input type="text" id="rawLinkList" placeholder="https://gist.githubusercontent.com/...">
+            </div>
+
+            <div class="form-group">
+              <label>📄 SolidCode Generado</label>
+              <textarea id="solidCode" readonly></textarea>
+              <div class="button-group">
+                <button class="btn btn-primary" onclick="generarSolidCode()">⚡ Generar SolidCode</button>
+                <button class="btn btn-secondary" onclick="cargarSolidCodeDeDoc()">📥 Cargar desde Google Doc</button>
+                <button class="btn btn-secondary" onclick="abrirGoogleDoc()">📝 Abrir Google Doc</button>
+                <button class="btn btn-secondary" onclick="copiarAlPortapapeles('solidCode')">📋 Copiar</button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>🔗 Link a SolidCode (Compartir)</label>
+              <input type="text" id="solidLinkSC">
+              <div class="button-group">
+                <button class="btn btn-primary" onclick="guardarCampoSolidCode()">💾 Guardar Links</button>
+                <button class="btn btn-secondary" onclick="copiarAlPortapapeles('solidLinkSC')">📋 Copiar</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB: LINKLIST -->
+          <div id="tab-linklist" class="tab-content">
+            <div class="info-box">
+              ℹ️ Esta es una herramienta utilitaria. Genera el LinkList desde un repositorio de GitHub y cópialo para usarlo después.
+            </div>
+
+            <div class="form-group">
+              <label>🌐 GitHub Tree URL</label>
+              <input type="text" id="githubTreeUrl" placeholder="https://github.com/usuario/repo/tree/main">
+            </div>
+
+            <div class="button-group">
+              <button class="btn btn-primary" onclick="generarLinkListDesdeGitHub()">⚡ Generar LinkList</button>
+            </div>
+
+            <div class="form-group">
+              <label>📋 LinkList Generado <span id="linkListCount" style="color: #58a6ff;"></span></label>
+              <textarea id="linkListGenerado" readonly placeholder="Aquí aparecerá el LinkList generado..."></textarea>
+              <div class="button-group">
+                <button class="btn btn-secondary" onclick="copiarAlPortapapeles('linkListGenerado')">📋 Copiar Todo</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB: INFO -->
+          <div id="tab-info" class="tab-content">
+            <div class="form-group">
+              <label>📝 Nombre del Proyecto</label>
+              <input type="text" id="nombreProyecto" placeholder="Nombre del proyecto">
+            </div>
+
+            <div class="form-group">
+              <label>🔗 Link SolidCode</label>
+              <input type="text" id="solidLinkInfo">
+              <div class="button-group">
+                <button class="btn btn-secondary" onclick="copiarAlPortapapeles('solidLinkInfo')">📋 Copiar</button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>🌐 Link App Web</label>
+              <input type="text" id="appWebLink" placeholder="https://...">
+              <div class="button-group">
+                <button class="btn btn-secondary" onclick="copiarAlPortapapeles('appWebLink')">📋 Copiar</button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>📝 Información General</label>
+              <textarea id="info"></textarea>
+            </div>
+
+            <div class="button-group">
+              <button class="btn btn-primary" onclick="guardarCampoInfo()">💾 Guardar Todo</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: NUEVO PROYECTO -->
+  <div id="modalNuevoProyecto" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">Crear Nuevo Proyecto</div>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="inputNombreProyecto" class="modal-input" placeholder="Nombre del proyecto">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btnCancelarNuevo">Cancelar</button>
+        <button class="btn btn-primary" id="btnConfirmarNuevo">Crear</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ELIMINAR PROYECTO -->
+  <div id="modalEliminar" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">⚠️ Confirmar Eliminación</div>
+      </div>
+      <div class="modal-body">
+        <p class="modal-text">
+          ¿Estás seguro que deseas eliminar el proyecto 
+          <span class="modal-highlight" id="nombreProyectoEliminar"></span>?
+        </p>
+        <p class="modal-text" style="margin-top: 8px;">
+          Esta acción no se puede deshacer y también eliminará el Google Doc asociado.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btnCancelarEliminar">Cancelar</button>
+        <button class="btn btn-danger" id="btnConfirmarEliminar">Sí, eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- OVERLAY DE LOADING -->
+  <div id="loadingOverlay" class="loading-overlay">
+    <div class="loading-content">
+      <div class="loading-spinner"></div>
+      <div class="loading-text" id="loadingText">Generando SolidCode...</div>
+      <div class="loading-subtext" id="loadingSubtext">Por favor espera</div>
+      <div class="loading-progress" id="loadingProgress"></div>
+    </div>
+  </div>
+
+  <!-- OVERLAY Y ALERTA PERSISTENTE -->
+  <div id="alertOverlay" class="alert-overlay" onclick="cerrarAlertaPersistente()"></div>
+  <div id="alertPersistent" class="alert-persistent">
+    <div class="alert-header">
+      <div class="alert-icon" id="alertIcon">⚠️</div>
+      <div class="alert-title" id="alertTitle">Error al generar SolidCode</div>
+      <button class="alert-close-btn" onclick="cerrarAlertaPersistente()">×</button>
+    </div>
+    <div class="alert-body">
+      <div class="alert-message" id="alertMessage">
+        Se detectaron problemas al obtener algunos archivos del repositorio.
+      </div>
+      
+      <!-- Estadísticas -->
+      <div class="alert-stats" id="alertStats" style="display: none;">
+        <div class="stat-item">
+          <span class="stat-value total" id="statTotal">0</span>
+          <span class="stat-label">Total</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value success" id="statSuccess">0</span>
+          <span class="stat-label">Exitosos</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value error" id="statError">0</span>
+          <span class="stat-label">Errores</span>
+        </div>
+      </div>
+      
+      <!-- Detalles de errores -->
+      <div class="alert-details" id="alertDetails" style="display: none;">
+        <div class="alert-details-header">Detalles de los errores:</div>
+        <div id="alertDetailsList">
+          <!-- Los detalles se llenan dinámicamente -->
+        </div>
+      </div>
+    </div>
+    <div class="alert-footer">
+      <button class="alert-btn alert-btn-secondary" onclick="cerrarAlertaPersistente()">Cerrar</button>
+      <button class="alert-btn alert-btn-primary" onclick="reintentar()">Reintentar</button>
+    </div>
+  </div>
+
+  <script>
+    console.log('=== CODEHUBBER v2.5 INICIANDO ===');
+    let proyectos = [];
+    let proyectoActual = null;
+
+    window.onload = function() {
+      console.log('window.onload ejecutado');
+      try {
+        inicializarEventos();
+        console.log('Eventos inicializados');
+        cargarProyectos();
+        console.log('cargarProyectos() llamado');
+      } catch (error) {
+        console.error('ERROR EN WINDOW.ONLOAD:', error);
+        alert('Error al iniciar: ' + error.message);
+      }
+    };
+
+    function inicializarEventos() {
+      document.getElementById('btnCancelarNuevo').addEventListener('click', function() {
+        cerrarModal('modalNuevoProyecto');
+      });
+      document.getElementById('btnConfirmarNuevo').addEventListener('click', confirmarNuevoProyecto);
+      
+      document.getElementById('btnCancelarEliminar').addEventListener('click', function() {
+        cerrarModal('modalEliminar');
+      });
+      document.getElementById('btnConfirmarEliminar').addEventListener('click', confirmarEliminar);
+      
+      document.getElementById('inputNombreProyecto').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') confirmarNuevoProyecto();
+      });
+    }
+
+    function cargarProyectos() {
+      console.log('>>> cargarProyectos() ejecutándose...');
+      
+      google.script.run
+        .withSuccessHandler(function(data) {
+          console.log('✅ obtenerProyectos SUCCESS - Proyectos recibidos:', data.length);
+          proyectos = data;
+          renderizarProyectos();
+          
+          if (proyectos.length > 0) {
+            seleccionarProyecto(proyectos[0].rowIndex);
+          } else {
+            document.getElementById('emptyState').style.display = 'block';
+            document.getElementById('projectContent').style.display = 'none';
+            document.getElementById('btnEliminarProyecto').disabled = true;
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.error('❌ obtenerProyectos FAILED:', error);
+          mostrarError(error);
+        })
+        .obtenerProyectos();
+    }
+
+    function renderizarProyectos() {
+      const list = document.getElementById('projectList');
+      list.innerHTML = '';
+
+      proyectos.forEach(function(proyecto) {
+        const item = document.createElement('div');
+        item.className = 'project-item';
+        if (proyectoActual && proyectoActual.rowIndex === proyecto.rowIndex) {
+          item.classList.add('active');
+        }
+
+        const orderInput = document.createElement('input');
+        orderInput.type = 'number';
+        orderInput.className = 'project-order';
+        orderInput.value = proyecto.orden;
+        orderInput.addEventListener('click', function(e) {
+          e.stopPropagation();
+        });
+        orderInput.addEventListener('change', function(e) {
+          reordenar(proyecto.rowIndex, parseFloat(e.target.value));
+        });
+
+        const nameContainer = document.createElement('div');
+        nameContainer.className = 'project-name';
+        nameContainer.textContent = proyecto.nombre;
+
+        item.appendChild(orderInput);
+        item.appendChild(nameContainer);
+        item.addEventListener('click', function() {
+          seleccionarProyecto(proyecto.rowIndex);
+        });
+
+        list.appendChild(item);
+      });
+    }
+
+    function seleccionarProyecto(rowIndex) {
+      google.script.run
+        .withSuccessHandler(function(proyecto) {
+          proyectoActual = proyecto;
+          mostrarProyecto();
+          renderizarProyectos();
+          document.getElementById('btnEliminarProyecto').disabled = false;
+        })
+        .withFailureHandler(mostrarError)
+        .obtenerProyecto(rowIndex);
+    }
+
+    function mostrarProyecto() {
+      document.getElementById('emptyState').style.display = 'none';
+      document.getElementById('projectContent').style.display = 'block';
+
+      // Pestaña SolidCode
+      document.getElementById('rawLinkList').value = proyectoActual.linkList || '';
+      document.getElementById('solidLinkSC').value = proyectoActual.solidLink || '';
+      
+      // Pestaña Info
+      document.getElementById('nombreProyecto').value = proyectoActual.nombre || '';
+      document.getElementById('solidLinkInfo').value = proyectoActual.solidLink || '';
+      document.getElementById('appWebLink').value = proyectoActual.appWebLink || '';
+      document.getElementById('info').value = proyectoActual.info || '';
+      
+      if (proyectoActual.solidCode && proyectoActual.solidCode.trim() !== '') {
+        cargarSolidCodeDeDoc();
+      } else {
+        document.getElementById('solidCode').value = '';
+      }
+    }
+
+    function cambiarTab(tabName) {
+      document.querySelectorAll('.tab').forEach(function(tab) {
+        tab.classList.remove('active');
+      });
+      
+      document.querySelectorAll('.tab').forEach(function(tab) {
+        if (tab.getAttribute('data-tab') === tabName) {
+          tab.classList.add('active');
+        }
+      });
+
+      document.querySelectorAll('.tab-content').forEach(function(content) {
+        content.classList.remove('active');
+      });
+      
+      document.getElementById('tab-' + tabName).classList.add('active');
+    }
+
+    function abrirModalNuevoProyecto() {
+      document.getElementById('modalNuevoProyecto').classList.add('active');
+      document.getElementById('inputNombreProyecto').value = '';
+      setTimeout(function() {
+        document.getElementById('inputNombreProyecto').focus();
+      }, 100);
+    }
+
+    function abrirModalEliminar() {
+      if (!proyectoActual) return;
+      document.getElementById('nombreProyectoEliminar').textContent = proyectoActual.nombre;
+      document.getElementById('modalEliminar').classList.add('active');
+    }
+
+    function cerrarModal(modalId) {
+      document.getElementById(modalId).classList.remove('active');
+    }
+
+    function confirmarNuevoProyecto() {
+      const nombre = document.getElementById('inputNombreProyecto').value.trim();
+      
+      if (!nombre) {
+        mostrarMensaje('Debes ingresar un nombre válido', 'error');
+        return;
+      }
+
+      cerrarModal('modalNuevoProyecto');
+
+      google.script.run
+        .withSuccessHandler(function(data) {
+          proyectos = data;
+          renderizarProyectos();
+          mostrarMensaje('Proyecto creado exitosamente', 'success');
+          
+          const nuevoProyecto = data[data.length - 1];
+          seleccionarProyecto(nuevoProyecto.rowIndex);
+        })
+        .withFailureHandler(mostrarError)
+        .crearProyecto(nombre);
+    }
+
+    function confirmarEliminar() {
+      if (!proyectoActual) return;
+      
+      cerrarModal('modalEliminar');
+      
+      google.script.run
+        .withSuccessHandler(function(data) {
+          proyectos = data;
+          proyectoActual = null;
+          renderizarProyectos();
+          document.getElementById('emptyState').style.display = 'block';
+          document.getElementById('projectContent').style.display = 'none';
+          document.getElementById('btnEliminarProyecto').disabled = true;
+          mostrarMensaje('Proyecto eliminado exitosamente', 'success');
+        })
+        .withFailureHandler(mostrarError)
+        .eliminarProyecto(proyectoActual.rowIndex);
+    }
+
+    function reordenar(rowIndex, nuevoOrden) {
+      google.script.run
+        .withSuccessHandler(function(data) {
+          proyectos = data;
+          renderizarProyectos();
+        })
+        .withFailureHandler(mostrarError)
+        .reordenarProyecto(rowIndex, nuevoOrden);
+    }
+
+    // ====================================
+    // SISTEMA DE ALERTAS PERSISTENTES v2.5
+    // ====================================
+
+    function mostrarAlertaPersistente(tipo, titulo, mensaje, detalles, estadisticas) {
+      detalles = detalles || null;
+      estadisticas = estadisticas || null;
+      
+      // Configurar ícono según tipo
+      const iconos = {
+        error: '❌',
+        warning: '⚠️',
+        success: '✅',
+        info: 'ℹ️'
+      };
+      
+      document.getElementById('alertIcon').textContent = iconos[tipo] || iconos.warning;
+      document.getElementById('alertTitle').textContent = titulo;
+      document.getElementById('alertTitle').className = 'alert-title ' + tipo;
+      document.getElementById('alertMessage').textContent = mensaje;
+      
+      // Mostrar estadísticas si existen
+      const alertStats = document.getElementById('alertStats');
+      if (estadisticas && estadisticas.total > 0) {
+        alertStats.style.display = 'grid';
+        document.getElementById('statTotal').textContent = estadisticas.total;
+        document.getElementById('statSuccess').textContent = estadisticas.exitosos;
+        document.getElementById('statError').textContent = estadisticas.fallidos;
+      } else {
+        alertStats.style.display = 'none';
+      }
+      
+      // Mostrar detalles de errores si existen
+      const alertDetails = document.getElementById('alertDetails');
+      const alertDetailsList = document.getElementById('alertDetailsList');
+      
+      if (detalles && detalles.length > 0) {
+        alertDetails.style.display = 'block';
+        alertDetailsList.innerHTML = detalles.map(function(detalle, index) {
+          return '<div class="alert-detail-item">' +
+            '<span class="alert-detail-icon">' + (index + 1) + '</span>' +
+            '<span class="alert-detail-text">' + detalle + '</span>' +
+            '</div>';
+        }).join('');
+      } else {
+        alertDetails.style.display = 'none';
+      }
+      
+      document.getElementById('alertOverlay').classList.add('active');
+      document.getElementById('alertPersistent').classList.add('active');
+    }
+
+    function cerrarAlertaPersistente() {
+      document.getElementById('alertOverlay').classList.remove('active');
+      document.getElementById('alertPersistent').classList.remove('active');
+    }
+
+    function mostrarLoading(texto, subtexto, progreso) {
+      texto = texto || 'Procesando...';
+      subtexto = subtexto || 'Por favor espera';
+      progreso = progreso || '';
+      
+      document.getElementById('loadingText').textContent = texto;
+      document.getElementById('loadingSubtext').textContent = subtexto;
+      document.getElementById('loadingProgress').textContent = progreso;
+      document.getElementById('loadingOverlay').classList.add('active');
+    }
+
+    function ocultarLoading() {
+      document.getElementById('loadingOverlay').classList.remove('active');
+    }
+
+    function reintentar() {
+      cerrarAlertaPersistente();
+      generarSolidCode();
+    }
+
+    // ====================================
+    // FUNCIONES PRINCIPALES
+    // ====================================
+
+    // GUARDAR PESTAÑA SOLIDCODE
+    function guardarCampoSolidCode() {
+      if (!proyectoActual) return;
+
+      const rawLinkList = document.getElementById('rawLinkList').value;
+      const solidLink = document.getElementById('solidLinkSC').value;
+
+      // Guardar Raw LinkList URL
+      google.script.run
+        .withSuccessHandler(function(proyecto) {
+          proyectoActual.linkList = proyecto.linkList;
+        })
+        .withFailureHandler(mostrarError)
+        .actualizarCampo(proyectoActual.rowIndex, 'linkList', rawLinkList);
+
+      // Guardar SolidLink
+      google.script.run
+        .withSuccessHandler(function(proyecto) {
+          proyectoActual.solidLink = proyecto.solidLink;
+          document.getElementById('solidLinkSC').value = proyecto.solidLink;
+          document.getElementById('solidLinkInfo').value = proyecto.solidLink;
+          mostrarMensaje('Links guardados exitosamente', 'success');
+        })
+        .withFailureHandler(mostrarError)
+        .actualizarCampo(proyectoActual.rowIndex, 'solidLink', solidLink);
+    }
+
+    // GUARDAR PESTAÑA INFO
+    function guardarCampoInfo() {
+      if (!proyectoActual) return;
+
+      const nombre = document.getElementById('nombreProyecto').value.trim();
+      const solidLinkInfo = document.getElementById('solidLinkInfo').value;
+      const appWebLink = document.getElementById('appWebLink').value;
+      const info = document.getElementById('info').value;
+
+      if (!nombre) {
+        mostrarMensaje('El nombre del proyecto no puede estar vacío', 'error');
+        return;
+      }
+
+      // Guardar nombre
+      google.script.run
+        .withSuccessHandler(function(proyecto) {
+          proyectoActual.nombre = proyecto.nombre;
+          renderizarProyectos();
+        })
+        .withFailureHandler(mostrarError)
+        .actualizarCampo(proyectoActual.rowIndex, 'nombre', nombre);
+
+      // Guardar solidLink
+      google.script.run
+        .withSuccessHandler(function(proyecto) {
+          proyectoActual.solidLink = proyecto.solidLink;
+          document.getElementById('solidLinkSC').value = proyecto.solidLink;
+          document.getElementById('solidLinkInfo').value = proyecto.solidLink;
+        })
+        .withFailureHandler(mostrarError)
+        .actualizarCampo(proyectoActual.rowIndex, 'solidLink', solidLinkInfo);
+
+      // Guardar appWebLink
+      google.script.run
+        .withSuccessHandler(function(proyecto) {
+          proyectoActual.appWebLink = proyecto.appWebLink;
+        })
+        .withFailureHandler(mostrarError)
+        .actualizarCampo(proyectoActual.rowIndex, 'appWebLink', appWebLink);
+
+      // Guardar info
+      google.script.run
+        .withSuccessHandler(function(proyecto) {
+          proyectoActual.info = proyecto.info;
+          mostrarMensaje('Información guardada exitosamente', 'success');
+        })
+        .withFailureHandler(mostrarError)
+        .actualizarCampo(proyectoActual.rowIndex, 'info', info);
+    }
+
+    // GENERAR SOLIDCODE - VERSIÓN MEJORADA
+    function generarSolidCode() {
+      if (!proyectoActual) return;
+
+      const rawLinkListUrl = document.getElementById('rawLinkList').value.trim();
+      
+      if (!rawLinkListUrl) {
+        mostrarMensaje('Debes ingresar el Raw LinkList URL primero', 'error');
+        return;
+      }
+
+      // Mostrar loading
+      mostrarLoading(
+        'Generando SolidCode...', 
+        'Obteniendo archivos del repositorio',
+        'Esto puede tomar varios segundos...'
+      );
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          ocultarLoading();
+          
+          if (result.success) {
+            // Actualizar el textarea con el SolidCode generado
+            document.getElementById('solidCode').value = result.solidCode;
+            proyectoActual.solidCode = result.docId;
+            
+            // Verificar si hay errores
+            if (result.errores && result.errores.length > 0) {
+              // Mostrar alerta con advertencias
+              mostrarAlertaPersistente(
+                'warning',
+                '⚠️ SolidCode generado con advertencias',
+                result.message,
+                result.errores,
+                result.estadisticas
+              );
+            } else {
+              // Todo exitoso
+              mostrarMensaje('✅ ' + result.message, 'success');
+            }
+          } else {
+            // Error crítico
+            mostrarAlertaPersistente(
+              'error',
+              '❌ Error al generar SolidCode',
+              result.message,
+              result.errores || [],
+              result.estadisticas
+            );
+          }
+        })
+        .withFailureHandler(function(error) {
+          ocultarLoading();
+          mostrarAlertaPersistente(
+            'error',
+            '❌ Error crítico de conexión',
+            'No se pudo conectar con el servidor o hubo un error inesperado.',
+            [error.message || error.toString()]
+          );
+        })
+        .generarSolidCodeDesdeRaw(proyectoActual.rowIndex, rawLinkListUrl);
+    }
+
+    function cargarSolidCodeDeDoc() {
+      if (!proyectoActual || !proyectoActual.solidCode) {
+        mostrarMensaje('No hay SolidCode guardado para este proyecto', 'error');
+        return;
+      }
+      
+      mostrarMensaje('Cargando SolidCode desde Google Doc...', 'success');
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            document.getElementById('solidCode').value = result.solidCode;
+            mostrarMensaje(result.message, 'success');
+          } else {
+            document.getElementById('solidCode').value = '';
+            mostrarMensaje(result.message, 'error');
+          }
+        })
+        .withFailureHandler(function(error) {
+          document.getElementById('solidCode').value = '';
+          mostrarError(error);
+        })
+        .cargarSolidCodeDeDoc(proyectoActual.rowIndex);
+    }
+
+    function abrirGoogleDoc() {
+      if (!proyectoActual || !proyectoActual.solidCode) {
+        mostrarMensaje('No hay un Google Doc asociado a este proyecto', 'error');
+        return;
+      }
+      
+      const docUrl = 'https://docs.google.com/document/d/' + proyectoActual.solidCode + '/edit';
+      window.open(docUrl, '_blank');
+    }
+
+    // PESTAÑA LINKLIST - GENERAR DESDE GITHUB
+    function generarLinkListDesdeGitHub() {
+      const githubTreeUrl = document.getElementById('githubTreeUrl').value.trim();
+      
+      if (!githubTreeUrl) {
+        mostrarMensaje('Debes ingresar la URL del GitHub Tree', 'error');
+        return;
+      }
+
+      mostrarMensaje('Generando LinkList desde GitHub...', 'success');
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            document.getElementById('linkListGenerado').value = result.linkList;
+            document.getElementById('linkListCount').textContent = '(' + result.totalArchivos + ' archivos)';
+            mostrarMensaje('LinkList generado correctamente: ' + result.totalArchivos + ' archivo(s)', 'success');
+          } else {
+            mostrarMensaje('Error al generar LinkList', 'error');
+          }
+        })
+        .withFailureHandler(mostrarError)
+        .generarLinkListDesdeTree(githubTreeUrl);
+    }
+
+    function copiarAlPortapapeles(elementId) {
+      const elemento = document.getElementById(elementId);
+      elemento.select();
+      document.execCommand('copy');
+      mostrarMensaje('Copiado al portapapeles', 'success');
+    }
+
+    function mostrarMensaje(texto, tipo) {
+      const mensaje = document.getElementById('message');
+      mensaje.textContent = texto;
+      mensaje.className = 'message ' + tipo;
+      mensaje.style.display = 'block';
+      
+      const duracion = tipo === 'error' ? 8000 : 4000;
+      
+      setTimeout(function() {
+        mensaje.style.display = 'none';
+      }, duracion);
+    }
+
+    function mostrarError(error) {
+      console.error('Error:', error);
+      mostrarMensaje('Error: ' + error.message, 'error');
+    }
+  </script>
+</body>
+</html>
